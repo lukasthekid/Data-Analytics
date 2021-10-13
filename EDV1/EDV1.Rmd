@@ -1,0 +1,291 @@
+---
+title: "Datenanalyse"
+date: "12.04.2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+subtitle: Abgabe 1
+---
+
+## Vorinformation:
+
+Um dieses Dokument exekutieren zu k&ouml;nnen, muss zuerst R, R-Studio von
+https://www.rstudio.com/ und \LaTeX (z.B. f&uuml;r Windows als Miktex https://miktex.org/ und f&uuml;r Linux als TexLive https://www.tug.org/texlive/)
+installiert werden. Man ruft dann R-Studio auf, &ouml;ffnet diese Datei mit
+*File - Open File*, und dr&uuml;ckt den Knopf *Knit*. Dies erzeugt dann als
+Resultat dieses pdf-File.
+
+Vorallem auf Linux sollte man sich auch vergewissern, da&szlig; Pandoc installiert ist.
+
+### Load the required data
+
+```{r, echo=FALSE}
+library(StatDA)
+data(moss)
+data(ohorizon)
+data(bhorizon)
+data(chorizon)
+```
+
+# Erste Frage
+
+Erstellen eines Histogrammes für die Bodenschicht Bhorizon. Was versteht man unter einem Histogramm? Ist es sinnvoll bzw. notwendig die Daten zu transformieren?
+
+```{r}
+x = bhorizon$P2O5
+x_log = log(bhorizon$P2O5)
+hist(x_log, main = "", xlab = "x")
+summary(x_log)
+
+
+```
+
+Ein Histogramm ist eine grafische Darstellung, die eine Gruppe von Datenpunkten in benutzerdefinierten Bereichen organisiert. Ähnlich wie ein Balkendiagramm komprimiert das Histogramm eine Datenreihe zu einer leicht zu interpretierenden visuellen Darstellung, indem viele Datenpunkte in logische Bereiche oder Bins gruppiert werden.
+
+Manchmal sind normal verteilte Daten gefordet, was nicht immer gewährleistet werden kann, da die beobachteten Daten verzerrt sind (links oder rechts schief). Das erkennt man, wenn diese links oder rechts schief im Histogramm verteilt sind. Es macht also Sinn die Daten zu transformieren. Dies erfolgt beispielsweise über das Logarithmieren der Daten. Wie im oberen Histogram erkennbar wurde durch so eine Transformation eine normale Verteilung angenähert.
+
+
+```{r}
+par(mfrow=c(1,2))
+d = density(x_log, kernel = "gaussian")
+d1 = density(x_log, kernel = "cosine")
+
+hist(x_log, main = "", xlab = "x", breaks = "FD", , freq = FALSE)
+lines(d, col="red",lwd=2)
+lines(d1, col="blue",lwd=2, lty=2)
+
+
+brkVec = seq(-4, 0, by=0.44)
+brkVec
+hist(x_log, xlab = "x" , main="", breaks = brkVec)
+
+
+
+legend(x = "top",inset = 0,
+        legend = c("gaussian", "cosine"), 
+        col=c("red","blue"), lty=1:2, lwd=1, cex=.5, horiz = TRUE)
+
+```
+
+Die Anzahl der Balken(Klassen) ergibt sich aus den vordefinierten Grenzen, zwischen welchen sich die Daten streuen. Mit mehr Grenzen ergeben sich so genauere Grafiken um genauer zu erkennen, wo die extremen gemessen wurden. das linke Histogram wurde mit der “Friedman-Diaconis” Methode erzeugt. Hier werden die Grenzen anders berechnet als im standard Histogram (
+$$
+Klassenbreite = 2\frac{IQR(x)}{n^{(1/3)}},  IQR = Q3 −  Q1
+$$). Das rechte Histogram zeigt selbst definierte Grenzen um genau 9 Klassen zu erzeugen. Man erkennt schnell, dass die meisten Daten zwischen -3 und -2 gemessen wurden, retransformieren wir unsere Daten wieder zurück ergibt sich ein Intervall: `r c(exp(-3),exp(-2))`. Noch genauer ist das im linken Histogram zusehen, daher ist dieses auch die genauerste Darstellung unserer Daten.
+
+Beide Kerndichteeinschätungen wirken sehr ähnlich, ich würde dennoch mit der standardisiierten Normalverteilung einhergehen, da mir diese in den Spitzen noch akkuarter vorkommt.
+
+# Zweite Frage
+
+### Daten für dieses Beispiel laden
+
+
+```{r, echo=FALSE}
+
+library(Ecdat)
+data("Diamond")
+
+
+```
+Erstellen Sie Boxplots mit Kerben für die Preise der Diamanten gruppiert nach der Variable colour. Bedenken Sie, dass der Preis von schwereren Diamanten trivialerweise höher ist, weshalb das Gewicht (Variable carat) herausgerechnet werden muss. Dies könnte z.B. so gemacht werden, dass nicht die Variable price, sondern price/carat genommen wird – aber diese Lösung wird noch nicht optimal sein, und es sollten auch andere Ansätze versucht werden (Tipp: der normierte Preis sollte nicht mehr von carat abhängen).
+
+```{r, echo=TRUE}
+
+
+price = Diamond$price / Diamond$carat
+
+color = Diamond$colour
+
+
+boxplot(price~color, notch = TRUE, col= c("azure2", "azure3", "beige", "bisque1", "bisque4", "darkgoldenrod1"), ylab = "price/carat")
+
+```
+
+
+Ein Boxplot ist eine standardisierte Methode zur Anzeige der Datenverteilung auf der Grundlage einer Zusammenfassung mit fünf Zahlen („Minimum“, erstes Quartil (Q1), Median, drittes Quartil (Q3) und „Maximum“). Bei gekerbten Box-Plots wird eine "Kerbe" oder Verengung der Box um den Median angewendet. Kerben sind nützlich, um einen groben Anhaltspunkt für die Bedeutung der Medianunterschiede zu bieten. Wenn sich die Kerben zweier Kästchen nicht überlappen, bietet dies Hinweise auf einen statistisch signifikanten Unterschied zwischen den Medianwerten. Die Kerben zeigen uns also eine schätzung unseres Konfidenz-Intervalls rund um den Median\ref{fig:abb3}.
+
+Wie erwartet sind Diamanten der Farbe D die "reinsten", sie haben keine Gelbanteile und sind somit auch die teuersten Diamanten. Neben der Farbe sind allerdings auch andere Faktoren, wie die Klarheit des Steines entscheidend (also wie viele Kristalle sich in dem Diamanten gebildet haben), daher kann ein Diamant der Farbe D auch weniger kosten als ein reiner Diamant einer anderen Farbe. Dennoch sieht man an der Schwarzen Linie, dass der erwartete Preis/Karat deutlich über den anderen Diamantfarben liegt. Auch wenn das bei anderen Farben weniger klar zu erkenn ist kann man sehen, dass rund die Hälfte der Diamanten der Farbe I auch günstiger sind als die Hälfte anderer Farben (Fläche unter dem Mean) und auch der teuerste I-Diamant liegt unter den Extrempreisen anderer Farben.
+
+```{r, echo=TRUE}
+par(mfrow=c(1,2))
+price2 = Diamond$price / (Diamond$carat^2)
+
+boxplot(price2~color, notch = TRUE, col= c("azure2", "azure3", "beige", "bisque1", "bisque4", "darkgoldenrod1"), ylab = "(price/carat)/carat")
+boxplot(price2~color, notch = FALSE, col= c("azure2", "azure3", "beige", "bisque1", "bisque4", "darkgoldenrod1"), ylab = "(price/carat)/carat")
+
+```
+
+Wie man in der ersten Grafik erkennen konnte schienen die Preise linear zu fallen, eine quadratische Abhängigkeit konnte somit beobachtet werden. Aus diesem Grund entschied ich mich die Ergebnisse nochmals durch die Karate zu dividieren. Das Ergebnis ist zwei mal abgebildet, einmal mit Kerben und einmal ohne. Die Verteilung wirkt nun willkürlicher, dem entsprächend auch unabhängiger. Diamanten der reinsten Farbe D erzielen nachwievor vorwiegend die höchsten Preise. Was sich nun jedoch besser zeigen lässt ist der Fall, das Diamanten mit mit mittel-schweren Farbanteilen ungefähr gleiche Preise erzielen. Die Farben E bis G befinden sich demnach in sehr ähnlichen Preisregionen. Abgesehen von den Extremwerten in Farbe E, kann sogar ein leichter Trend zu Diamanten der Farbe G erkennen, da hier überraschend viele Diamanten solide Preise erzielen, dies sei wahrscheinlich der hohen Reinheit geschuldet. Wenig überrschend erzielen Diamanten mit den höchsten Gelbanteilen auch die niedrigsten Preise.
+
+# Dritte Frage
+Generieren Sie sich zuerst 100 Realisierungen zweier Zufallsgrößen die aus einer geometrischen Verteilung mit Parameter prob = 0.02 bzw. einer Exponentialverteilung mit Parameter rate = 55 stammen. Dies funktioniert mit dem Befehl x.desc <- rgeom(100, prob = 0.02) bzw. x.cont <- rexp(100, rate = 55). Zeichnen Sie nun die empirische Verteilungsfunktion (?ecdf) der beiden Zufallsvektoren mit unterschiedlichen Farben in eine Grafik. Falls die Verteilungsfunktionen aufgrund von sehr unterschiedlichen numerischen Bereiche nicht in einer Grafik vereinbar sind, erstellen Sie separate Plots (begründen Sie dies jedoch in der Dokumentation). Wie ist die empirische Verteilungsfunktion definiert? Beschreiben Sie die Unterschiede, die Ihnen zwischen der diskret und der kontinuierlich verteilten Zufallsgröße auffallen.
+
+Plotten Sie außerdem die empirische Verteilungsfunktion für die Variablen K_AA, Zn und Rb aus der Schicht ohorizon (falls sinnvoll, sollten Sie die Daten zuerst transformieren). Interpretieren Sie die Ergebnisse und Unterschiede der empirischen Verteilungsfunktionen.
+
+```{r}
+set.seed(150)
+
+par(mfrow=c(1,2))
+r1 = rgeom(100, 0.02)
+r2 = rexp(100, 55)
+
+f_geom = ecdf(r1)
+f_exp = ecdf(r2)
+
+plot(f_geom, col="red", ylab = "geometisch", main  ="")
+plot(f_exp, col="lightblue",  ylab = "exponentiell", main  ="")
+
+
+```
+```{r echo=FALSE}
+
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+
+r101 = range01(r1)
+r201 = range01(r2)
+f_geom01 = ecdf(r101)
+f_exp01 = ecdf(r201)
+plot(f_geom01, col="red", ylab = "geometisch", main  ="")
+plot(f_exp01, col="lightblue",  ylab = "exponentiell", main  ="", add=TRUE)
+
+
+
+```
+
+Oben wurde auch ein *seed* gesetzt (siehe Quellcode in der .Rmd Datei), um immer die gleichen Zufallszahlen zu 
+erhalten (Reproduzierbarkeit).
+
+Da die absoluten Werte zu stark voneinadner abweichen wurde hier auf 2 Plots gesetzt, man kann dennoch gut erkennen, dass die Verteilung ähnlich ist. In der zusätzlichen Grafik wurden die Verteilungen standardisiert und auf ein Intervall von 0 bis 1 skaliert. So lässt sich die Vertelung besser vergleichen.
+
+Die empirische Verteilungsfunktion ist eine Schätzung der kumulativen Verteilungsfunktion, die die Punkte in der Stichprobe erzeugt hat. Es konvergiert mit der Wahrscheinlichkeit 1 zu dieser zugrunde liegenden Verteilung gemäß dem Glivenko-Cantelli-Theorem. Sie ist zudem eine Schrittfunktion, die stark mit dem empirischen Maß der Stichprobe verbunden ist.
+
+Diskrete Variablenwerte sind endlich bzw. abzählbar während kontinuierliche oder diskrete Variablen zwischen einem Intervall unendlich viele Werte zulassen. So gehört die Geometrische Verteilung beispielsweise zu den diskreten Verteilungen, da sie aus unabhängigen Bernoulli_Experimenten abgeleitet wird. Beispielweise wie viele Versuche es braucht um 2 mal hintereinander eine 6 zu Würfeln. Diese Anzahl ist auf N beschrenkt daher gibt es auch keine Verbinung zwischen den Messpunkten, da diese abzählbar sind.
+
+Diskrete variablen lassen unendlich viele Werte zu, so wird die exponentielle Verteilung auch gebraucht um Lebendzeit von Atomen zu berechnen. Erzielte werte können also auch zwischen 2 Messpunkten liegen, da zwischen 0 und 1 minuten unendlich viel zeit vergeht. Fü uns bedeutet dass, dass wir unserer Messpunkte verbinden.
+
+An der exponentiellen Verteilung kann die Exponentialfunktion anhand des Verlaufes klar erkannt werden. Die Kurve hat den Typischen Verlauf und die Steigung scheint auch exponentiell abzuflachen. Anders bei der geomtrischen Funktion, hier lassen sich stufenweise lineare Abhängigkeiten erkennen. Die Steigung flacht hier anders ab als bei der blauen Kurve.
+
+```{r}
+par(mfrow=c(3,1))
+x1 = ohorizon$K_AA
+x2 = log(ohorizon$Zn)
+x3 = log(ohorizon$Rb)
+
+f_x1 = ecdf(x1)
+f_x2 = ecdf(x2)
+f_x3 = ecdf(x3)
+
+plot(f_x1, col= "gray36", main="K_AA")
+plot(f_x2, col="gray51", main="Zn")
+plot(f_x3, col="gray66", main="Rb")
+
+
+
+```
+
+
+
+Alle drei Daten gleichen sich sehr stark und legen einen normalen Verlauf einer Cdf dar. 2 der Daten wurden zuvor transformiert um ein besseres Gesamtbild zu erzeugen. Die Erwartungswerte dieser 3 Variablen steheb bei: `r c(mean(ohorizon$K_AA), mean(ohorizon$Zn), mean(ohorizon$Rb))`. Die empirische Verteilung sagt uns jetzt wie hoch die Wahrscheinlichkeiten sind Werte <=x zu erhalten. Die Daten aus Zn scheinen am mittigsten positioniert zu sein und könnten sich einer Normalverteilung so gut annähern. In der unteren Grafik lassen sich die skalierten Daten wieder in einer Grafik anzeigen.
+```{r, echo=FALSE}
+
+x11 = range01(x1)
+x22 = range01(x2)
+x33 = range01(x3)
+
+f_x11 = ecdf(x11)
+f_x22 = ecdf(x22)
+f_x33 = ecdf(x33)
+
+plot(f_x11, col= "gray36", main="")
+plot(f_x22, col="gray51", main="", add=TRUE)
+plot(f_x33, col="gray66", main="", , add=TRUE)
+
+legend(x = 'top',
+        legend = c("K_AA", "Zn", "Rb"), 
+        col=c("gray36","gray51","gray66" ), lty=1, lwd=3, cex=.5, horiz = TRUE)
+
+
+
+```
+
+
+# Vierte Frage
+
+Ziehen Sie zufällig 500 Werte aus einer Normalverteilung mit Mittelwert -33 und Standardabweichung 9.89 (x <- rnorm(500, -33, 9.89)). Erstellen Sie für die generierten Werte mit der Funktion qqplot.das einen QQ-Plot. Sind die Parameter der zugrunde liegenden Normalverteilung im Plot ersichtlich und wenn ja, wie? Hierfür kann die Funktion grid hilfreich sein, welche bei einem bereits bestehenden Plot ein Gitter im Hintergrund einblendet.
+
+Stellen Sie nun den QQ-Plot der 3 (evtl. transformierten) Variablen aus Beispiel 3 dar. Der QQ-Plot der ersten Variable kann wieder mit qqplot.das erzeugt werden. Die weiteren Variablen sollen im selben Plot mit anderer Farbe aufscheinen (kann mit dem Parameter add.plot der Funktion qqplot.das erzielt werden). Passen Sie eventuell wieder die Bereiche des Plots mit den Parametern xlim und ylim an. Falls die Daten trotz Anpassung der Bereiche nicht in einen Plot passen, erstellen sie separate Plots (mit Begründung in der Dokumentation). Lassen sich im QQ-Plot Strukturen in den Daten erkennen und unterstützen die QQ-Plots ihre Schlüsse in Beispiel 3?
+
+```{r}
+set.seed(520)
+
+xn = rnorm(500, -33, 9.89)
+data = data.frame(xn)
+
+qqplot.das(xn)
+
+grid( col = "lightgray", lty = 1)
+
+
+```
+```{r, echo=FALSE}
+set.seed(520)
+
+xn = rnorm(500, -33, 9.89)
+data = data.frame(xn)
+
+qqplot.das(xn, ylim = c(-40,-26), xlim = c(-0.5,0.5))
+
+grid( col = "lightgray", lty = 1)
+
+
+```
+
+
+
+
+Oben wurde auch ein *seed* gesetzt (siehe Quellcode in der .Rmd Datei), um immer die gleichen Zufallszahlen zu 
+erhalten (Reproduzierbarkeit)
+
+Die angegebene gerade Linie weist auf eine perfekte Normalverteilung hin. Liegen unsere Testdaten nun also perfekt an dieser Linie, so sind die Daten (in diesem Bereich) Normalverteilt. Dies ist in der Realität jedoch nie der Fall und auch mit einer Größe von 500 Testdaten, welche einer Normalverteilung entnommen wurden, kann eine perfekte Normalverteilung nicht im geamten Intervall erzielt werden. Zwischen -1 und 1 befinden sich unsere Testdaten jedoch sehr nah an der Linie und man kann davon ausgehen, dass die Daten in diesem Bereich perfekt normalverteilt sind. Der Schlauch um die Linie zeigt unser Konfidenzintervall, also die Fehler die wir akzeptieren können um noch von einer Normalverteilung ausgehen zu können. Da alle Punkte innerhalb dieses Intervalls stehen kann man von einer Normalverteilung ausgehen, was auch richtig ist. Die Grafik auf den Nullwert zentriert zeigt uns den Mean der Verteilung.
+
+```{r}
+
+
+qqplot.das(log(x1),  ylim=c(0,8))
+qqplot.das(x2, col="tan2", add.plot = TRUE, ylim=c(0,8))
+qqplot.das(x3, col="slateblue3", add.plot = TRUE, ylim=c(0,8))
+grid( col = "lightgray", lty = 1)
+
+legend(x = "top",inset = 0,
+        legend = c("K_AA", "Zn", "Rb"), 
+        col=c(palette()[2],"tan2","slateblue3"), lty=1, lwd=5, cex=.5, horiz = TRUE)
+
+```
+```{r, echo=FALSE}
+
+qqplot.das(log(x1),  ylim=c(6.2,6.8), xlim = c(-1,1),xlab = 'Normal Qantiles', ylab = 'Data Qantiles', main = "K_AA")
+grid( col = "lightgray", lty = 1)
+
+
+```
+
+```{r, echo=FALSE}
+
+qqplot.das(x2, col="tan2", ylim=c(3.4,4.2), xlim = c(-1,1), xlab = 'Normal Qantiles', ylab = 'Data Qantiles', main = "Zn")
+grid( col = "lightgray", lty = 1)
+
+
+```
+
+```{r, echo=FALSE}
+
+qqplot.das(x3, col="slateblue3", ylim=c(1.2,2.2), xlim = c(-1,1), xlab = 'Normal Qantiles', ylab = 'Data Qantiles', main = "Rb")
+grid( col = "lightgray", lty = 1)
+
+```
+
+Nun wurden alle Variablen transformiert um eine gleichmäßige skalierung zu gewählreisten. Wie zu erkennen ist nähern sich alle 3 Variablen im Bereich -1, 1 sehr stark an die Normalverteilung an. In 2 der Variablen finden jedoch in den unteren Extremen starke Abweichungen statt, welche sogar aus dem Konfidenzintervall fallen, daher würde ich nur die Variable Rb als normalverteilt erachten, meine Vermutungen aus Bsp3 wurden bestärkt. Auch in der detailierten Ansicht, woch nur das Intervall -1 bis 1 betrachtet wird lässt sich gut erkennen, dass die Variable K_AA bereits in diesem kleinen Intervall den Konfidenzbereich verlässt und somit unvorhersagbar wird. Diese Variable ist demnach nicht normalverteilt. Die Variable Zn durchbricht den Konfidenzbereich nicht und verteilt sich in disem Bereich sehr genau an der Refferenzlinie. Auch die Variable Rb bewegt sich innerhalb den Konfidenzintervalls, doch um den Mittelwert 0 sichtbare unterschiede zu erkennen, die Variablen Quanitile scheinen sich also nur bedingt mit denen der Normalverteilung zu decken.
+
+
+
+</div></pre>

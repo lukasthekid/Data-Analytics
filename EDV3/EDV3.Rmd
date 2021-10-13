@@ -1,0 +1,355 @@
+---
+title: "Datenanalyse"
+date: "14.06.2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+subtitle: Abgabe 3
+---
+
+## Vorinformation:
+
+Um dieses Dokument exekutieren zu k&ouml;nnen, muss zuerst R, R-Studio von
+https://www.rstudio.com/ und \LaTeX (z.B. f&uuml;r Windows als Miktex https://miktex.org/ und f&uuml;r Linux als TexLive https://www.tug.org/texlive/)
+installiert werden. Man ruft dann R-Studio auf, &ouml;ffnet diese Datei mit
+*File - Open File*, und dr&uuml;ckt den Knopf *Knit*. Dies erzeugt dann als
+Resultat dieses pdf-File.
+
+Vorallem auf Linux sollte man sich auch vergewissern, da&szlig; Pandoc installiert ist.
+
+### Load the required data
+
+```{r, echo=FALSE}
+
+load("ice.RData")
+load("oliveSample_11925939.RData")
+library("MASS")
+
+
+
+```
+
+# Erste Frage
+
+Erstellen Sie einen Segmentplot und einen Sternenplot (stars()) der ersten 8 Spalten der ice Daten. Verwenden Sie als labels der Grafiken die Namen aus der Spalte group (die Spalte kann mit dem Befehl as.character in eine Zeichenkette umgewandelt werden). Achten Sie darauf, dass Sie eine Legende hinzufügen und dass die Grafiken, die Beschriftungen und die Legende gut sichtbar sind.
+
+Zeichnen Sie außerdem einen Plot mit parallelen Koordinaten (Funktion parcoord im Package MASS) der ersten 8 Spalten der ice Daten und färben Sie die Linien nach der Spalte code. Versuchen Sie, durch Umsortieren der Spalten die Strukturen besser sichtbar zu machen.
+
+```{r}
+raw_iceData <- data.frame(x1 = ice$x1, x2 = ice$x2, x3 = ice$x3, x4 = ice$x4, x5 = ice$x5, x6 = ice$x6, x7 = ice$x7, x8 = ice$x8)
+stars(raw_iceData, draw.segments = TRUE, labels = as.character(ice$group), scale = TRUE, xlim = c(0,14), ylim = c(0,14), key.loc = c(-2,1))
+
+```
+```{r, echo=TRUE}
+
+stars(raw_iceData, draw.segments = FALSE, labels = as.character(ice$group), scale = TRUE, xlim = c(0,14), ylim = c(0,14), key.loc = c(-2,1))
+
+```
+```{r, echo=TRUE}
+raw_iceData <- data.frame(x2 = ice$x2, x5 = ice$x5, x6 = ice$x6, x3 = ice$x3, x4 = ice$x4,x1 = ice$x1,   x7 = ice$x7, x8 = ice$x8)
+
+parcoord(raw_iceData, col = ice$code)
+legend(x = "top",inset = 0,
+        legend = c("fresh", "lake", "desert", "ampato", "glac", "iceman"), 
+        col=c("deeppink","green","turquoise", "royalblue", "orangered", "black"), lty=1, lwd=2, cex=.5, horiz = TRUE)
+
+```
+
+
+* Welche Gemeinsamkeiten zwischen den einzelnen Mumien sehen Sie im Segment- oder Sternenplot, und korrespondieren diese Strukturen mit der Spalte group? Wird dies im Plot mit parallelen Koordinaten besser sichtbar?
+
+In einem Segmentblock werden die erzielten Messwerde der gegebenen Messungen direkt gegenübergestellt. So kann man beispielsweise herauslesen, dass beim zweiten "iceman" Test (oben links der zweite) die Messung aus dem 8. Datenset die höchsten Fettsäurewerte eingefangen hat (zu erkennen an dem großen grauen Segment). Ist ein Segment einer Messgrupe nicht ersichtlich, dann weil diese Messmethode bei der degeben Gruppe nicht angewandt wurde. Während im Segmentblock jeder Messwert als färbige Fläche angezeigt wird, werden im Sternenplot linien gezeichnet. Ein Sternenblock ergibt sich daraus, dass vom Ursprung aus (richtung gegeben durch Legende) für jedes Ergebnis aus den 8 Messmethoden eine Linie gezeichnet wird. Wie lang sich diese vom Urspruch erstreckt, hängt davon ab, wie hoch der erzielte Messwert im Vergleich zu den anderen war. Am Ende werden die Linien dann miteinander verbunden und das Bild ähnelt einem Stern. Wenn man diesen Unterschied kennt und den Sternenplot richtig interpretieren kann erkennt man genau die gleichen Muster, wie im Segmentplot.
+
+Als Beispiel erkennen wir bei der letzten "fresh2" Messung, dass das lilane Segment, dicht gefolgt vom grünen, den höchsten Messwert erzielte. Visuell sehen wir hier nun zwei größe Flächen. In der dazugehörigen Messung aus dem Sternenplot sieht man zwar nur eine eingeschlossene Fläche, doch es ist klar zu erkennen, dass der Strich, welcher zu x6 gehört länger als sein nachbar ist. Die eingeschlossene Fläche besteht aus zwei Messungen und ist leicht schief, weil x6 den höchsten Wert erzielte. An der Legende ist immer abzulesen, wie ein perfekt ausbalanciertes Ergebnis aussehen sollte.
+
+Messungen ohne Segment haben demzufolge auch keine Linie im Sternenplot. Verglichen mit den parallelen Koordinaten lässt sich nun ablesen welche Messmethode gesamt die meisten und die höchsten Werte in einem Test erzielen konnte. Es ist zu erkennen, dass Methode x5 sehr viele und auch sehr hohe Ergebnisse in den Tests mit frischen Leichen erzielte. Im Segmentplot ist vor allem durch die Farbe schnell zu erkennen, dass sich diese Aussage auch aus diesem Plott alleine ergeben hätte, da bei allen fresh-tests die lilanen, gemeinsam mit der türkisen Flächenm durchwegs präsent waren. Die lilanen Flächen sind im durchschnitt auch bei allen fresh-tests sehr groß und das spigelt sich in den hohen Funktionswerten des Koordinatenplots wieder. Ich bin bereits darauf eingegangen wie der Sternenplot zu interpretieren ist und auch hier sieht man, dass die Plots sehr "linkslagig" sind in den fresh-tests. Durch die Koordinaten ist die Quantität der Messungen jedoch deutlich ersichtlicher.
+
+
+# Zweite Frage
+
+Führen Sie eine Hauptkomponmentenanalyse (Principal Component Analysis, PCA) für den Datensatz data(decathlon) aus dem Paket FactoMineR durch. Verwenden Sie jedoch eine individuell generierte Teilmenge aus dem Datensatz. Diese wird wie folgt erstellt: decathlon[c("Points", "Points", "Shot.put", "Discus", "Rank", "Competition", "High.jump", "110m.hurdle", "Pole.vault")]
+
+### Daten für dieses Beispiel laden
+
+
+```{r, echo=FALSE}
+library(ggplot2)
+
+library("FactoMineR")
+data(decathlon)
+decathlon <- decathlon[c("Points", "Points", "Shot.put", "Discus", "Rank", "Competition", "High.jump", "110m.hurdle", "Pole.vault")]
+
+```
+
+* Erklären Sie den Sinn von PCA und kurz den mathematischen Hintergrund.
+
+Große Datensätze mit vielen Dimensionen sind schwer zu bewerten und Muster kristalisieren sich nicht so schnell heraus. Die Idee hinter PCA ist es das große Set an Variablen zu reduzieren, welche dennoch den Großteil der Informationen wahren. Eine geringe Anzahl an Linearkombinationen (Hauptkomponenten) sind das Ergebnis und lassen sich leichter visualisieren als das ursprüngliche Datenset.
+
+* Warum sollte ggf. eine Transformation der Daten durchgeführt werden?
+
+In unseren Komponenten betrachten wir Richtungen (Vektoren) und die PCA berechnung ist reagiert sehr sensibel auf Varianzen in unseren Variablen. Variablen die zwischen 0 und 100 liegen dominieren andere, die zwischen 0 und 1 liegen, obwohl beide (skaliert) die gleiche Richtung angeben. Unsere Daten müssen also skaliert und standartisiert werden, dass der Mittelwert als 0 angegeben wird. Links und rechts der Achsen kann dann die Entfernung zum Mittelwert in Standardabweichungen gelesen werden. So können numerisch unterschiedliche Werte rellativ betrachtet werden.
+
+* Welche Arten von Transformationen bieten sich hier an?
+
+Es eignet sich am Besten die Daten zu skalieren, die Formel hierfür lautet:
+$$
+z = \frac{v - mean}{sd}
+$$
+
+
+* Wie kann eine geeignete Auswahl der Komponenten a) grafisch b) mit R (bzw. R-Funktionen) erfolgen?
+
+
+
+```{r, echo=TRUE}
+myPR <- prcomp(decathlon[,-6], scale = TRUE)
+myPR
+summary(myPR)
+
+```
+
+Ein PCA kann nur mit nummerischen Werten und fortlaufenden Werten berechnet werden. Der zuvor genannte Scale wurde hier in einem Parameter angegben und unsere Komponenten mit transformierten Daten berechnet. Jeder Komponent besteht aus einer Linearkombination aus unseren Variablen. Wie sich an der Cumulative Proportion erkennen lässt betrachtet der erste Komponent über 50% aller Varianzen, er betrachtet somit das größte und volatilste Subset unseres Dataframes. Um den Score einer Linearkombination zu berechnen werden die Ergebnisse zu einer bestimmten Messung mit den passenden Werten aus der Kombination multipliziert und dann miteinander addiert. Um die Daten nun reduzieren zu können wissen wir, dass PC1 und PC2 70% aller Variancen aufweisen, somit das größte und aussagekräftigste Subset sind.
+
+
+```{r, echo=TRUE}
+plot(myPR, type = 'l')
+biplot(myPR, scale = 0)
+
+
+```
+
+in dem Ersten Plot wurde meine nummerische Analyse grafisch bestätigt. Es ist klar zu erkennen, dass wir unser Datenset mit Betrachtung auf PC1 und PC2 reduzieren können und somit einiges an Effizienz dazugewinnen.
+
+In dem zweiten Plot wurden die Scores (beschrieben im oberen Text) von PC1 und PC2 zu jeder Person gegenübergestellt. In schwarz sehen wir jede Person, die an der Messung teilnahm und in rot sehen wir die Eigenvektoren unserer Variablen. Die Nullen an den Achsen stehen für den gemessenen Mittelwert in den Komponenten. Anhand der Richtungen lassen sich die Korrelationen berechnen. Ein hoher PC1 Messwert zieht einen hohen Rang und ein hohes Ergebnis im 100m Hürdenlauf nach sich, während der Discuswurf eher mager ausfällt. Ein hohes PC2 Ergebnis bedeutet hoher Stabhochsrung und niedriger Rang.
+
+```{r, echo=TRUE}
+
+#extract PC Scores
+decathlon2 <- cbind(decathlon, myPR$x[,1:2])
+
+ggplot(decathlon2, aes(PC1, PC2, col= Competition, fill = Competition))+
+  stat_ellipse(geom = "polygon", col="black", alpha = 0.5)+
+  geom_point(shape = 21, col= "black")
+
+```
+
+
+
+# Dritte Frage
+Beschreiben Sie kurz worum es bei der Clusteranalyse geht.
+
+Nennen Sie mindestens 5 unterschiedliche Clustering Verfahren und beschreiben Sie 2 davon kurz. Gehen Sie dabei auch auf die dazugehörigen R Funktionen ein. Erläutern Sie zusätzlich die Bedeutung von Distanzmaßen.
+
+Wie kann eine sinnnvolle und brauchbare Anzahl von Clustern bestimmt werden?
+
+Führen Sie für folgenden Datensatz olive aus dem Paket pgmm Clusteranalysen mit unterschiedlichen Verfahren durch. Die Daten finden Sie in ihrem Ordner oliveSample_11925939.RData. Lesen Sie sie in R ein (siehe R Hilfe des ersten Beispiels). Achten Sie darauf, die Daten passend zu visualiseren. Hierbei können Sie sich von Inspiration Visualisierung inspirieren lassen. Stellen Sie dabei das Clustering Ergebnis ähnlich wie Beispiel Clustering den realen und korrekten Gruppen gegenüber. Wenden Sie 3 unterschiedliche CLusterverfahren an und vergleichen Sie die Ergebnisse. Begründen Sie warum Datenpunkte je nach Verfahren in verschiedene Gruppen eingeordnet werden können.
+
+Clusteranalyse ist eine Art von Datenanalyse in welcher Beobachtungen in wiederkehrende Gruppen (Pattern) unterteilt werden, die untereinader ähnliche Charakteristiken aufweisen. Um diese Gruppen zu finden gibt es unterschiedliche Algorithmen.
+
+Hard Clustering bedeutet, dass ein Punkt nur zu einer Gruppe gehören kann, während im
+Soft Clustering eine Wahrscheinlichkeit angegeben wird, zu wechler der Punkt einer Gruppe angehören könnte. Unterschiedliche Methoden um ein Clustering durchzuführen sind:
+
+* DBSCAN (Density-Based Spatial Clustering of Applications with Noise)
+* HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise)
+* Fuzzy Clustering
+* Partitioning Clustering
+* Grid-Based Clustering
+
+Bei der Density-Based Methode werden Clusters anhand der Verteilung der Daten bestimmt. Regionen, wo viele Messwerte dicht aneinander liegen werden so als Cluster bezeichnet und zusammengefasst. Regionen wo wenige Werte liegen, werden zu englisch *noise* bezeichnet. Ein sehr bekannter Algorithmus hierfür ist der DBSCAN Algorithmus, welcher gleichnamig auch in R existiert. Mit den zwei Argumenten *eps* und *minPts* gibt man den Radius an ab wann zwei Punkte Nachbarn sind und der Andere Parameter gibt an ab wann eine Region an Punkten als Cluster identifiziert werden kann. Abstände zwischen Objekten im multidimensionalen Raum bilden die Grundlage vieler multivariater Methoden der Datenanalyse. Daher ist das Distanzmaß ausschlaggebend um Cluster zu erkennen und um Daten denen zuzuordnen. Verschiedene Methoden verwenden auch ein anderes Distanzmaß, so wird bei der Hierarschie mit euklidischen Distanzen gerechnet, während beim k-mean eine Schwerpunktberechnung durchgeführt wird.
+
+Die am häufigsten verwendete ist die Partitioning Clustering Methode. Hier werden die Eigenschaften der Messpunkte betrachtet um diese verschiedenen Gruppen zuzuweisen. Die Anzahl an Clustern muss hier jedoch angegeben werden. Der Algorithmus verfolgt dann einem iterativen Prozess um die Datenpunkte zuzuweisen. Die dazugehörige Funktion in R lautet *kmeans()*. Die Anzahl der Cluster wird eingegeben und die Abstände werden zwischen den Punkten un den Schwerpunkten der Cluster berechnet. Liegen Punkte nahe ein einem Cluster werden sie zugewiesen und die Schwerpunkte der Cluster neu berechnet.
+
+### Daten für dieses Beispiel laden
+
+
+```{r, echo=FALSE}
+library(dbscan)
+library(factoextra)
+library(stats)
+library(dplyr)
+library(ape)
+
+```
+
+
+```{r}
+
+#finding otimal eps
+
+kNNdistplot(sampledData, k=10)
+abline(h = 200, lty=2)
+
+
+```
+
+Diese Funktion hilft uns einen geeigneten *eps* Wert zu finden. Wie auf dem Plot ersichtlich steigen unsere Distanzen linear an bis zu dem Zeitpunkt, an dem sie in die Höhe schießen, das ist unser eps Wert.
+```{r}
+d <- dbscan(sampledData, eps = 200, minPts = 50)
+d
+fviz_cluster(d,sampledData, geom = "point")
+d <- dbscan(sampledData, eps = 200, minPts = 40)
+d
+fviz_cluster(d,sampledData, geom = "point")
+
+```
+
+Ziel ist es ein Ergebnis zu bekommen, in welchem wenig Noise (schwarze Punkte die keinem CLuster angehören) und trotzdem große Cluster hat. mit dem Parameter minPoints kann man einstellen ab wann eine Region ein CLuster ist und mit dem Reduzieren von 50 auf 40 haben sich unsere Cluster aber auch unsere Noise halbiert.
+```{r} 
+#find optimal numbers of cluster
+wssplot <- function(data, nc=15, seed=1234){
+                  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+                      for (i in 2:nc){
+                set.seed(seed)
+                    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+              plot(1:nc, wss, type="b", xlab="Number of Clusters",
+                            ylab="Within groups sum of squares")
+}
+wssplot(sampledData)
+abline(v = 3, lty = 2)
+
+
+```
+
+Da man hier die Anzahl an Clustern angeben muss braucht man Hilfe um die optimale Anzahl zu berechnen. Laut meiner Rechere wird hierfür das Sum of Squares withing groups Verfahren verwendet (wss). Leider gibt es in R hierfür keine Funktion also habe ich diese im [https://rpubs.com/violetgirl/201598](Internet gefunden) und geladen. Mit dieser Funktion werden die *within-groups sums* gegen die Nummer an Clustern in der K-means solution geplottet. Wir wollen die minimale Anzahl an Clustern, die aber den größten Teil unserer wss abdeckt. Wie beim vorigen Beispiel suchen wir hier einen Wert ab dem ein deutlicher Knick den Verlauf der Kurve ändert. Unser optimaler Wert für k ist 3.
+
+```{r} 
+k <- kmeans(sampledData,3)
+fviz_cluster(k,sampledData, geom = "point")
+k <- kmeans(sampledData,2)
+fviz_cluster(k,sampledData, geom = "point")
+plot(sampledData, col = k$cluster)
+
+
+
+```
+
+Vergleichen wir nun die die beiden Methoden unter gleichen Parametern (2 Cluster) erkennen wir, dass die Datenpunkte je nach Methode in eine andere Gruppe fällt. Vor allem bei den Datenpunkten unten rechtes im Koordinatensystem ist zu erkennen, dass fast keine überschneidung mehr stattfindet, anders als dies nach dem *density-based clustering* zu beobachten war.Die *fviz_cluster* Funktion verwendet principal components um die Dimensionen zu reduzieren, so kann das Ergebis aus der Matrix zusammengefasst werden.
+```{r} 
+dist <- dist(sampledData)
+h <- hclust(dist, method = "ward.D2")
+plot(h, hang = -1, cex = 0.6)
+rect.hclust(h,k=3, border="red")
+clusters <- cutree(h,3)
+plot(sampledData, col= clusters)
+colors = c("red", "blue", "green")
+
+
+plot(as.phylo(h), type = "fan", tip.color = colors[clusters],
+     label.offset = 1, cex = 0.7)
+
+
+
+
+```
+
+Beim hierarchischen CLustering werden ähnliche Daten zusammengefasst und dann diese hierarisch aufgebaut bis oben an der Wurzel das größte Cluster ist. Im Baumplot gehen die Cluster so lange auseinander bis jeder Messwert sein eigenes Cluster bildet. Man kann sich so also grafisch anschauen welche Messwerte zu welchem Zeitpunkt in welches Cluster gehören. Mit der selben Methode wie beim k-Mean habe ich den Baum dann in drei Cluster unterteilt und diese geplottet. Das Ergebnis ähnelt sehr stark dem von der K-Mean Methode mit 3 Clustern. In der ersten Methode ist klar ersichtlich und auch beschrieben, dass es auch Noise geben kann, welches zu keinem Cluster gehört. Das liegt daran dass dort die Anzahl an Klustern variabel ist. Auch die Methode wie Cluster aufgespalten werden um eine Hierachie aufzubauen ist anders als die Berechnung mit den Schwerpunkten, daher ist es gut möglich, dass bestimmte Daten in anderen Clustern liegen.
+
+# Vierte Frage
+
+Beschreiben Sie den Nutzen sowie die Funktionsweise der Diskriminanzanalyse kurz. Grenzen Sie hierbei insbesondere Diskriminanzanalyse von Clusteranalyse ab.
+
+Tipp: verwenden Sie für die folgenden Ausgaben das Paket MASS und car.
+
+Diesmal werden wir folgenden Datensatz analysieren Wine
+
+Verschaffen Sie sich zunächst einen Überblick über die Daten mit der scatterplotMatrix Funktion.
+
+Welche R Funktion eignet sich, um Summary Statistics für multivariate Daten zu erstellen?
+
+Teilen Sie den Datensatz im Verhältnis 70:30 in einen Trainings- und Testdatensatz ein. Führen Sie eine LDA für folgende Subsets des Datensatzes durch: 1) wine[c("V1", "Alcalinity", "Phenols", "Intensity")] 2) wine[c("V1", "Magnesium", "Magnesium", "Ash", "Alcalinity", "Proanthocyanins", "Nonflavanoid", "Intensity", "Flavanoids", "OD280")].
+
+Nutzen Sie die predict Funktion zur Prognose the Klassenzugehörigkeit für die Testdaten, und Vergleichen Sie jeweils die Vorhersage mit der tatsächlichen Klasseneinteilung und visualisieren Sie das Ergebnis ensprechend.
+
+### Load the required data
+
+```{r, echo=TRUE}
+library(car)
+library(MASS)
+library(devtools)
+wine <-read.table("wine.data", header=FALSE, sep= ",")
+colnames(wine) <- c("V1","Alcohol", "Malic_Acid", "Ash", "Alcalinity", "Magnesium", "Phenols", "Flavanoids", "Nonflavanoid", "Proanthocyanins", "Intensity", "Hue", "OD280", "Proline")
+summary(wine)
+
+
+
+
+```
+
+Mithilfe der Diskriminanzanalyse kann in einem multivariablen Verfahren zwischen mehreren Gruppen unterschieden werden. Die Daten werden auf Merkmale geprüft und bewertet um diese in beschreibende Gruppen zuordnen zu können. Auch dieses Verfahren versucht die Dimensionen zu reduzieren, jedoch wird hier auf eine klare unterscheidung zwischen Gruppen wert gelegt. Die Informationen aus den bestehenden Dimensionen wird gebraucht um eine weitere zu bilden, auf welche die Datenpunkte dann reduziert werden und sich deren Dimensionen zusammenfassen lassen. Diese neue Dimension versucht die Distanz zwischen den Means der Datengruppen zu maximieren. Gleichzeitig soll die Varianz in der Gruppe klein gehalten werden.In der Clusteranalyse ging es uns darum nur die Subgruppen mit der größten *Aussagekraft* hinsichtlich Streuung zu betrachten. Viele Dimensionen sollen auf die volatilsten heruntergebrochen werden und anhand dieser sollen dann unsere Gruppen gebildet werden. Das LDA Verfahren funktioniert ähnlich wie PCA, jedoch wollen wir direkt in klare Gruppen unterteilen und so die Dimensionen herunterbrechen.PC1 ist der Komponent mit meister Variation in den Daten während LD1 der Komponent mit den meisten Variationen in den Gruppen ist.
+
+
+```{r}
+
+scatterplotMatrix(wine[2:14])
+scatterplotMatrix(wine[2:6])
+plot(wine$Alcohol, wine$Magnesium, xlab = "Alcohol", ylab = "Magenesium")
+abline(lm(wine$Magnesium ~ wine$Alcohol))
+
+```
+
+Der Scatterplot plottete jede Variable gegeneinander um Relationen festzustellen. Der große plot zeigt das gleiche wie der Plot unten links im Matrix-Plot. Mithilfe der Matrix können wir mögliche Relationen sofort auf einem Blick sehen. Alkohol und Magnesium scheint eine Korrelation aufzuweisen.
+
+Nun wollen wir unsere Statistiken vereinen und zusammenfassen. Mit der **summary()** Funktion kann das für jede Variable ausgegeben werden. Wir erhalten so Information über Erwartungswert, Standardabweichung etc. über jede Variable unseres Datensets. Eine bessere Funktion ist die **sapply()** Funktion, da diese auch nur die Werte berechnet die man braucht. Die Ergebnisse sind auch etwas genauer als bei der ersten Funktion.
+
+```{r}
+sapply(wine[2:6],mean)
+
+```
+
+
+
+```{r}
+set.seed(55)
+# split the data
+
+ind <- sample(2, nrow(wine), replace = T, prob = c(0.7,0.3))
+train_wine <- wine[ind==1, ]
+test_wine <- wine[ind==2, ]
+
+#create subset
+subset_1 <- wine[c("V1", "Alcalinity", "Phenols", "Intensity")]
+subset_2 <- wine[c("V1", "Magnesium", "Magnesium", "Ash", "Alcalinity", "Proanthocyanins", "Nonflavanoid", "Intensity", "Flavanoids", "OD280")]
+
+#LDA für beide Subsets
+linear_set1 <- lda(V1~.,subset_1)
+linear_set2 <- lda(V1~.,subset_2)
+plot(linear_set1, col = subset_1$V1, main = "Subset 1")
+plot(linear_set2, col = subset_2$V1, main = "Subset 2")
+
+
+#Predict Training Data
+linear <- lda(V1~.,train_wine)
+p <- predict(linear,train_wine)
+ldahist(data = p$x[,1], g= train_wine$V1)
+ldahist(data = p$x[,2], g= train_wine$V1)
+
+#testing against the real data
+p1 <- predict(linear, n.ahead = length(test_wine))
+plot(p1$x[,1],p1$x[,2], col=p1$class, xlab = "LD1", ylab = "LD2", main = "Predicted distribution of groups")
+
+
+plot(lda(V1~.,test_wine), col = test_wine$V1, main = "Actual distribution of groups")
+
+
+
+
+
+##plot(test_wine[2:6], col = test_wine$V1)
+
+##plot(p$x[,1],p$x[,2], col=p$class)
+##plot(test_wine[2:6], col = test_wine$V1)
+
+
+
+
+
+```
+
+Subset 2 konnte durch die LDA Funktion sehr schön in Gruppen eingeteilt werden. Es gibt dennoch kritischie Überschneidungen zwischen Gruppe 1 und 2, welche die Vorhersage erschweren sollte. In weiterer Folge wurde das Trainings-Data getestet und durch die **predict()** funktion geschickt. LD1 weißt eine schöne verteilung auf und es kommt nur zu wenigen überschneidungen. Der zweite Komponent ist dahingegend schon sehr willkürlich und Gruppe 1 und 3 überlagern sich durchgehend, was weniger gut für unseren Test ausgehen könnte. Die letzten 2 Plots stellen die geschätzte Verteilung mit der aktuellen gegenüber. Die Gruppierungen und auch die anordnung der Gruppen scheinen zu stimmen. Die echten Daten sind jedoch vor allem zwischen Gruppe 2 und 3 wesentlich seperierbarer.
+
+
+
+
+
+</div></pre>

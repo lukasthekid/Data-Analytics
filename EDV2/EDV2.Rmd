@@ -1,0 +1,262 @@
+---
+title: "Datenanalyse"
+date: "12.05.2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+subtitle: Abgabe 2
+---
+
+## Vorinformation:
+
+Um dieses Dokument exekutieren zu k&ouml;nnen, muss zuerst R, R-Studio von
+https://www.rstudio.com/ und \LaTeX (z.B. f&uuml;r Windows als Miktex https://miktex.org/ und f&uuml;r Linux als TexLive https://www.tug.org/texlive/)
+installiert werden. Man ruft dann R-Studio auf, &ouml;ffnet diese Datei mit
+*File - Open File*, und dr&uuml;ckt den Knopf *Knit*. Dies erzeugt dann als
+Resultat dieses pdf-File.
+
+Vorallem auf Linux sollte man sich auch vergewissern, da&szlig; Pandoc installiert ist.
+
+### Load the required data
+
+```{r, echo=FALSE}
+
+library(Quandl)
+fundsTotal <- Quandl("BUNDESBANK/BBSF2_M_1_T_00000_IMM01_I_F_GSS_AT_00000_000000_Z01_00")
+
+fundsTotal <- rev(ts(fundsTotal, start = 2010, end = 2020, frequency = 12))
+fundsTotal.ts <- ts(fundsTotal, start = 2010, end = 2020, frequency = 12)
+
+
+
+```
+
+# Erste Frage
+
+Stellen sie die Zeitreihe grafisch dar. Achten sie dabei auf eine korrekte Achsenbeschriftung. In diese Grafik sollen nun zwei mit LOWESS geglättete Kurven mit unterschiedlicher Farbe eingezeichnet werden. Verwenden sie dazu den Befehl loess und wählen sie einen kleinen und einen großen Wert für den Parameter span. Zeichnen sie für eine der Schätzungen die Glättung der Residuen (“upper und lower smoothing”) in der gleichen Farbe, aber mit anderem Strichtyp ein.
+
+```{r}
+tm <- seq(2010,2020, by=1/12)
+
+res1 <- loess(fundsTotal.ts~tm, span = 0.9)
+res2 <- loess(fundsTotal.ts~tm, span = 0.1)
+
+smooth09 <- predict(res1)
+smooth01 <- predict(res2)
+
+r <- fundsTotal.ts - smooth09
+
+resFrame <- data.frame(r,tm,smooth09)
+
+rplus <- resFrame[resFrame$r>0,]
+rminus <- resFrame[resFrame$r<0,]
+
+res_plus <- loess(rplus$r~rplus$tm, span = 0.9)
+res_minus <- loess(rminus$r~rminus$tm, span = 0.9)
+smooth_plus <- predict(res_plus)
+smooth_minus <- predict(res_minus)
+
+
+
+plot(x=tm, y= fundsTotal.ts, main = "Real Estate Funds / Austria", xlab = 'year', ylab = 'euro in milion')
+lines(smooth01, x=tm, col='red')
+lines(smooth09, x=tm, col='blue')
+lines(rplus$tm, rplus$smooth09 + smooth_plus, col='blue', lty=2)
+lines(rminus$tm, rminus$smooth09 + smooth_minus, col='blue', lty=2)
+```
+
+
+* Wie fließt die Spannweite in die LOWESS Schätzung ein?
+
+Um eine Kurve zu errechen wird das “least square sum” verfahren herangezogen. Der Paramender span gibt uns die Spannweite, welche uns die Proportion der Observationen für eine lokale regression angibt. Eine regression wird immer auf eine Gruppe von Nachbarn bezogen, die daraus entstehenden Linien ergeben dann eine Kurve. Je kleiner diese Spannweite, desto weniger Nachbargruppen werden betrachtet, es enstehen viele kleine Linien, welchen den zackicken Verlauf kennzeichen. Hinzukommt dass bei jeder Nachbargruppe Der erste Wert am meisten gewichtet und der letzte Nachbar am wenigsten. Ist diese Spannweite größer so fließen mehr Messungen in die lokalen Regeressionen, das Ergebnis ist ungenauer aber geglätten und Trends können sich so gut abzeichnen.
+
+* Wie kann der mit LOWESS ermittelte Trend inhaltlich interpretiert werden?
+
+Der Wert der Immobilien Fonds hatte zwar einen starken Rückgang um 2014, jedoch erkennen wir einen globalen Aufwärtstrend und auch wenn volatäten auftreten kann von einem weiteren langfristigen Wachstum, aufgrund der Kurve, ausgegangen werden.
+
+* Wozu dient upper bzw. lower smoothing?
+
+Diese sind weitere Streuungsinformationen, wobei die Resudien (Differenz zwischen Mess-und Glättwerten) in einen negativen und einen positiven Datensatz aufgeteilt werden. Es finden sich also 2 Mengen, eine betrachtet die Messpunkte über der Lowess-Kurve und die andere die Werte darunter. Nun werden diese Mengen wieder geglättet und alle 3 Kurven zusammen geben genauere Streuinformationen.
+
+# Zweite Frage
+
+Nehmen sie die gleichen Daten wie in Beispiel 1 und wenden sie robustes Filtern an. Nehmen sie dazu aus dem Paket robfilter die Funktion robust.filter(), und wählen sie einen geeigneten Parameter für width. Visualisieren sie die Zeitreihe gemeinsam mit der geglätteten Zeitreihe. Werden Ausreißer erkannt? Wenn ja, zeichnen sie die Ausreißer in der Grafik ein.
+
+### Daten für dieses Beispiel laden
+
+
+```{r, echo=FALSE}
+
+library(robfilter)
+
+
+```
+
+
+```{r, echo=TRUE}
+
+
+fit <- robust.filter(fundsTotal.ts, width=31)
+glatt <- robust.filter(smooth09, width = 31)
+par(mfrow=c(1,2))
+
+plot(fit)
+points(28,1100, col = 'violetred', pch=19)
+plot(glatt)
+points(45,1215, col = 'violetred', pch=19)
+```
+
+
+* robust.filter() berechnet intern lokale Mittel und Streuungen. Welche Schätzer werden hierfür verwendet?
+
+Die Approximation der Kurve passiert standardmäßig mit der “Repeaded Median regression (RM)” Methode, diese kann jedoch im Parameter trend verändert werden. Mit der RM Methode werden Parameter der Reggressionslinie **y = A + Bx** wie folgt definiert:
+
+$$
+Bhat = median_{i}\ median_{i \neq j} \ slope(i,j), slope = \frac{Y_j - Y_i}{X_j - X_i} 
+$$
+$$
+Ahat = median_{i}\ median_{i \neq j} \ intercept(i,j), intercept = \frac{Y_j Y_i - X_iY_i}{X_j - X_i}
+$$
+
+Um das lokale Mittel zu errechnen wird also mehrmals vom Median gebraucht gemacht, welcher einmal A am y-Achsenabschnitt schätzt und B als Steigung schätzt. Intercept ist der erwartete Wert von Y wenn X den Wert 0 annimmt.
+
+Die Streuung wird mit dem Parameter *scale* und wird standardmäßig nach *Rousseeuw and Croux (QN)* berechnet. Die Schätzung nach einer Standardabweichung wäre zwar effizient, allerdings nicht robust genug. Nach Mosteller und Tukey hängt Robustheit von dem Widerstand ab, dass eine Änderung kleiner Werte nicht gleich den ganzen Schätzwert verzieht. Des Weiteren sollte der Schätzwert bei einer Vielfalt von Situationen greifen und dennoch nah an die optimale Streuung kommen (falls bekannt). Das QN-Verfahren hat eine gute Effizienz und ist nicht symetrisch abhängig. Das Verfahren leitet sich von Hodges-Lehmanns Standortschätzung ab.
+
+* Nach welchem Prinzip werden Ausreißer ermittelt?
+
+Ausreißerermittlung kann mit dem Parameter outliner gesteuert werden. Standardmäßig wird die Trimmethode verwedendet, wobei große Abweichungen von der 3-Sigma Regel erkannt werden. Hierfür wird für jeden Wert die Differenz zum Mittelwert errechnet und wenn diese den absoluten Wert von 3 Standardabweichungen überstiegt, wird dieser Wert als Ausreißer betrachtet.
+
+* Können die Ausreißer inhaltlich interpretiert werden?
+
+Wie man schnell sehen kann scheint der Trend 2013 sehr von den anderen Jahren abzuweichen.Das Vollumen der Fonds scheint in diesem Zeitraum starke Ausreißer aufzuzeigen. Laut recherche könnte dies an einer 2 Jährigen Mindesthaltdauer liegen, welche 2013 eingeführt wurde [Immobilienfonds Wiki](https://de.wikipedia.org/wiki/Offener_Immobilienfonds). Demzufolge war es früher Möglich Anteile schnell zu liquidieren, was Trader ausgenutzt haben sollen. Anteile die vor 2013 erwoben wurden konnten noch schnell liquidiert werden, der Fall könnte also durch diese Wandlung erklärt werden.
+
+
+
+# Dritte Frage
+Nehmen sie die gleichen Daten wie in Beispiel 1. Erstellen sie zunächst einen Plot der Trend-, Saison- und Restkomponenten.
+
+Unterteilen sie nun die Daten in zwei aufeinanderfolgende Zeitbereiche, wobei der letzte Bereich etwa 1-4 Jahre sein soll (je nachdem, wie lang ihre Zeitreihe ist). Der erste Bereich wird dazu dienen, ein Modell zu schätzen, und mit dem zweiten Bereich kann mit dem Modell eine Prognose erstellt werden, die dann mit den gemessenen Daten verglichen werden kann. Dazu müssen sie den ersten Bereich mittels plot() zeichnen, den Bereich der x-Achse vergrößern, und danach mit lines den zweiten Bereich einzeichnen.
+
+Berechnen sie nun anhand des ersten Bereiches eine Holt-Winters Schätzung für die Parameter. Zeichnen sie die erhaltenen geglätteten Werte in die Grafik mit anderer Farbe ein. Verwenden sie das berechnete Modell zur Prognose der restlichen Werte, und zeichnen sie die prognostizierten Werte mit einer auffallenden Farbe zusätzlich in die Grafik ein.
+
+```{r}
+c <- stl(fundsTotal.ts, "periodic")
+plot(c)
+
+
+```
+```{r}
+
+data <- window(fundsTotal.ts, end=2016)
+dataR <- window(fundsTotal.ts, start=2016)
+xx <- seq(2010,2016, by=1/12)
+xxx <- seq(2016,2020-1/12, by=1/12)
+
+hw <- HoltWinters(data)
+hw_smooth <- hw$fitted[,1]
+prognose <- predict(hw, n.ahead = 48)
+
+
+hw_prognose <- HoltWinters(hw_smooth)
+hw_prognose.ts <- predict(hw_prognose, n.ahead = 48)
+
+
+plot(x=xx, y=data, xlim=c(2010,2020), ylim=c(800,1800), type='l', xlab='Time', ylab='EUR in mio.', lwd=2)
+lines(hw_smooth, col='slateblue2', lwd=2)
+lines(hw_prognose.ts, col='violetred', , lwd=2)
+lines(prognose, col='tomato1', lwd=2)
+lines(dataR, col='skyblue1')
+
+legend(x = "top",inset = 0,
+        legend = c("Holt-Winter-Modell", "Prognose aus HW-Modell", "Prognose aus Messdaten", "Realer Verlauf"), 
+        col=c("slateblue2","violetred","tomato1", "skyblue1"), lty=1, lwd=2, cex=.5, horiz = TRUE)
+
+```
+
+* Sind in der Zeitreihe saisonale Schwankungen und ein Trend erkennbar? Wie sind diese zu interpretieren? Ist die Restkomponente nur noch white noise?
+
+Saisonale Schwankungen sind bemerkbar, jedoch bleiben diese sehr vorherseehbar. Die Höchständer werden beim Jahreswechsel erwartet. Zudem ist ein starker Aufwärtstrend zu erkenner, welcher sich allerdings erst in den letzten 5 Jahren so stark entwickelt hat. Die Jahre davor war der Kurs vom Abverkauf aus 2013 noch stark belastet.
+
+Der Restkomponentgibt uns nun die Daten die übrigbleiben, wenn Trend und Saisonale-Schwankungen herausgerechnet werden. Das Modell kann diese Werte also keinem Trend zuordnen. Wir bekommen also Messdaten -(Saison+Trend), was unseren Residuen entspricht.
+
+* Funktioniert Prognose mit Holt-Winters hier zufriedenstellend?
+
+Die Orange-Linie zeigt die Prognose aus dem HW-Modell, welches auf die Messdaten angewandt wurde. Wir sehen, dass ein leichter Aufwärtstrend angedeutet ist, was im Vergleich zur blauen Linie, welche den tatsächlichen Verlauf zeigt richtig erscheint. Durch den starken Einbruch in 2013 fällt die Prognose dennoch mager aus, weshalb ich dieser Prognose auch kein Vertrauen schenken würde.
+
+Noch extremer fällt dies auf wenn eine Prognose aus dem errechneten HW-Modell gezogen wird. Als Messdaten dienten hier die schon geglätteten Linien und nicht mehr die Daten direkt. Nun wird ein starker Abwärtstrend prognostiziert, was auch an dem Einbruch in 2013 liegen liegen sollte. Diese Prognose weicht nun ganz vom Tatsächlichen Verlauf des Gesamtvolumens der Immobilienfonds ab.
+
+
+# Vierte Frage
+
+Laden sie nun die Daten Animals2 aus dem Paket library(robustbase) und logarithmieren sie die Daten.
+
+Zeichnen sie nun das Gehirngewicht gegen das Körpergewicht in eine Grafik. Zeichnen sie die übliche kleinste Quadrate Regressionsgerade sowie die Gerade nach Siegel und die Gerade nach Tukey, in jeweils unterschiedlicher Farbe ein. Erstellen sie abschließend noch 2 Grafiken der geschätzten 2-dimensionalen Dichte der Daten. Die erste Grafik soll die 3D Darstellung der Dichte zeigen (Befehl persp) und die 2. Grafik soll mit dem Befehl contour (angewandt auf die Dichte) erstellt werden (versuchen sie, eine gute Perspektive zu finden).
+
+### Load the required data
+
+```{r, echo=FALSE}
+library(mblm)
+
+library(robustbase)
+animals <- log(Animals2)
+
+```
+
+```{r}
+lsr <- lm(animals$brain~animals$body)
+brain <- animals$brain
+body <- animals$body
+sl <- mblm(brain~body, repeated=TRUE)
+tl <- line(body,brain)
+
+plot(animals)
+abline(coefficients(lsr), lwd=2, lty=1, col="darkorchid")
+abline(coefficients(sl), lwd=2, lty=1, col="dodgerblue")
+abline(coefficients(tl), lwd=2, lty=1, col="firebrick4")
+
+legend(x = "top",inset = 0,
+        legend = c("least-squares", "Siegel line", "Tukey line"), 
+        col=c("darkorchid","dodgerblue","firebrick4"), lty=1, lwd=2, cex=.5, horiz = TRUE)
+
+```
+
+```{r}
+density2d <- kde2d(body, brain)
+persp(density2d, theta = 45, phi = 20, r = sqrt(3))
+
+```
+
+```{r}
+
+density2d <- kde2d(body, brain)
+contour(density2d)
+
+```
+
+
+* Welche der Geraden eignet sich ihrer Meinung nach für diesen Datensatz am besten (Begründung!)
+
+Die Siegel-Linie scheint hier am besten zu greifen. Die 3 Ausreißer, welche sich am rechten Rand befinden ziehen die Siegel-Linie nicht so extrem herunter, wie das bei den anderen Tests der Fall war. Laut meiner Recherche liegt das daran, dass beim Siegel-Tukey Test die Stichproben ein Ranggewicht bekommen und niedrige, sowie maximale Extrema haben die niedrigsten Gewichte. Bei der normalen Least Square Regression liegen keine Gewichte vor, weßhalb sich die Gerade von Ausreißern auch stark beeinflussen lässt. Nichts desto trotz erkenne ich 12 Messpunkte, welche “exakt” auf der Linie nach Siegel liegen, der Trend konnte so sehr gut eingefangen werden und keine der anderen Geraden konnte tatsächliche Messpunkte so gut treffen.
+
+* Beschreiben sie kurz, wie diese (von ihnen gewählte) Gerade berechnet wird
+
+Die **Theil-Sen** Regression, welche hier verwendet wurde weist eine deutlich höhere Robustheit auf als das bei einer normalen Regression der Fall ist. Zusätzlich funktioniert sie äußerst genau bei “skewed data”, also bei asymetrischen Messungen, wenn Daten also links, bzw. rechtsschief sind. DIe Steigung der Geraden wird bemessen, indem der Median aus allen Steigungen zwichen Punktepaaren genommen wird. Das funktioniert bei normalverteilten Daten äußerst gut. Der Theil-Set Schätzer eines Sets aus Punktepaaren
+
+$$
+(x_{i}, y_{i})
+$$
+ist der Median *m* aus den ganzen Steigungen
+$$
+(y_{j}-y_{i})/(x_{j}-x_{i})
+$$
+
+Eine Variation dieses Schätzers brachte dann Siegel 1982, welche auch als **repeated median regression** bekannt ist, wie in Frage 2 beantwortet werden hier bereits Mediane für die Punktepaare berechnet und der Schätzer m ist dann der globale Median aller “Steigungsmediane”. Durch diese doppelte Mediannutzung ist die Gerade robuster gegen Ausreißer, die berechnung ist jedoch aufwendiger. Der Breakdown-Punkt für den Theil-Sen Schätzer liegt bei
+
+$$
+1 - \frac{1}{\sqrt{2}} \approx 29,3 \%
+$$
+
+
+
+</div></pre>
